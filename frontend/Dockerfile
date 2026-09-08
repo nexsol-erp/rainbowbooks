@@ -21,7 +21,7 @@ RUN npm ci --no-audit --no-fund
 
 COPY frontend/ ./
 
-ARG VITE_STORE_NAME=Karvya
+ARG VITE_STORE_NAME="Rainbow Books"
 ARG VITE_STORE_TAGLINE="Handwoven coir craft"
 ARG VITE_CURRENCY=INR
 ARG VITE_LOCALE=en-IN

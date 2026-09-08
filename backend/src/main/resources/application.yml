@@ -94,7 +94,7 @@ springdoc:
 app:
   base-url: ${APP_BASE_URL:http://localhost:5173}
   storage-dir: ${APP_STORAGE_DIR:./media}
-  mail-from: ${MAIL_FROM:orders@karvya.local}
+  mail-from: ${MAIL_FROM:orders@rainbowbooks.local}
   admin-notification-email: ${APP_ADMIN_NOTIFICATION_EMAIL:owner@example.com}
   whats-app-number: ${APP_WHATSAPP_NUMBER:}
   bootstrap-admin:

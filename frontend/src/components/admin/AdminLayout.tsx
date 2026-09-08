@@ -75,7 +75,7 @@ export function AdminLayout() {
             lineHeight: 1.1,
           }}
         >
-          Karvya
+          Rainbow Books
         </Typography>
         <Typography
           sx={{

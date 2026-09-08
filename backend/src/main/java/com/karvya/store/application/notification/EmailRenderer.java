@@ -40,7 +40,7 @@ public class EmailRenderer {
     public String render(EmailNotification notification) {
         Context context = new Context();
         context.setVariables(readPayload(notification));
-        context.setVariable("storeName", settings.getString(SettingsService.STORE_NAME, "Karvya"));
+        context.setVariable("storeName", settings.getString(SettingsService.STORE_NAME, "Rainbow Books"));
         context.setVariable("subject", notification.getSubject());
 
         return templateEngine.process(templateFor(notification.getType()), context);

@@ -184,7 +184,7 @@ public class AdminSettingsService {
         String source = mailSenders.isConfiguredInSettings() ? "site settings" : "MAIL_* environment";
         try {
             emails.send(recipient,
-                    "Karvya test message",
+                    "Rainbow Books test message",
                     "<p>Your shop can send email.</p>"
                             + "<p>This was sent using the configuration from <strong>"
                             + source + "</strong>, from " + mailSenders.from() + ".</p>");

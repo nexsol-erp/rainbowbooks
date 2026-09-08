@@ -11,7 +11,7 @@
  * else.
  */
 export const config = {
-  storeName: import.meta.env.VITE_STORE_NAME || 'Karvya',
+  storeName: import.meta.env.VITE_STORE_NAME || 'Rainbow Books',
   tagline: import.meta.env.VITE_STORE_TAGLINE || 'Handwoven coir craft',
 
   currency: import.meta.env.VITE_CURRENCY || 'INR',

@@ -73,7 +73,7 @@ export function AdminLogin() {
           <Typography
             sx={{ fontFamily: '"Fraunces", Georgia, serif', fontSize: '1.9rem', fontWeight: 600 }}
           >
-            Karvya
+            Rainbow Books
           </Typography>
           <Typography
             sx={{

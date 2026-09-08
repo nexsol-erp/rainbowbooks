@@ -1,4 +1,4 @@
-// Karvya :: product image pipeline
+// Rainbow Books :: product image pipeline
 //
 // Reads the untouched originals from assets/originals and writes responsive
 // derivatives into the media storage directory. Originals are never modified.

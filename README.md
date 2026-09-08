@@ -1,4 +1,4 @@
-# Karvya
+# Rainbow Books
 
 A storefront and back office for selling handwoven coir handicrafts. Guest and
 registered checkout, offline payment, and an admin area for orders, catalogue,
