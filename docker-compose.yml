@@ -44,6 +44,15 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
+      # Both were already read from these same names in application.yml but
+      # never actually reached the container - found while chasing why
+      # MSG91_AUTH_KEY below had the same problem.
+      MAIL_AUTH: ${MAIL_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      MSG91_FROM_EMAIL: ${MSG91_FROM_EMAIL}
+      MSG91_DOMAIN: ${MSG91_DOMAIN}
+      MSG91_ORDER_TEMPLATE_ID: ${MSG91_ORDER_TEMPLATE_ID}
     volumes:
       - media_data:/var/lib/karvya/media
     healthcheck:
