@@ -341,20 +341,41 @@ a self-hosted runner inside the VPC.
 
 ### 7. Back up the database
 
-The instance is disposable; the orders on it are not.
+The instance is disposable; the orders on it are not. `scripts/backup-db.sh`
+dumps the database through the running `db` container (so no `psql` is needed
+on the host, and no credential appears in the process list), gzips it, refuses
+to keep an implausibly small dump, and prunes local copies past `KEEP_DAYS`
+(default 14). The Deploy workflow syncs this script to `$APP_DIR/scripts/`
+on every deploy, alongside `deploy.sh`, so it is never stale.
+
+Install it as a cron job as the deploy user, pointed at wherever the app
+actually lives (`$APP_DIR`) and a directory that user can write to without
+`sudo` for both the dumps and the log - `/var/log` usually needs root:
 
 ```bash
-sudo mkdir -p /var/backups/karvya && sudo chown "$USER":"$USER" /var/backups/karvya
 crontab -e
-# 15 2 * * * /opt/karvya/scripts/backup-db.sh >> /var/log/karvya-backup.log 2>&1
+# 15 2 * * * APP_DIR=/opt/apps/rbooks BACKUP_DIR=/opt/apps/rbooks/backups KEEP_DAYS=14 \
+#   bash /opt/apps/rbooks/scripts/backup-db.sh >> /opt/apps/rbooks/backup.log 2>&1
 ```
 
-Set `S3_BUCKET` in `.env` and attach an instance role with `s3:PutObject` to
-copy each dump off the box. A backup that only exists on the instance protects
-you from a bad migration but not from losing the instance.
+(`bash script.sh` rather than relying on the executable bit and the shebang,
+for the same reason `deploy.sh`'s own invocation does - a checkout on the
+server can predate the commit that set the exec bit.)
 
-`karvya_media_data` holds the product photographs and is not covered by the
-dump. Snapshot the EBS volume, or sync it to S3 on the same schedule.
+This is already installed on the `rbooks.tradelink247.com` deployment, using
+exactly the line above.
+
+Set `S3_BUCKET` in `.env` and attach an instance role (or an IAM user's
+credentials, on a shared box with no per-instance role) with `s3:PutObject`
+to also copy each dump off the box - a backup that only exists on the
+instance protects you from a bad migration but not from losing the instance.
+Not yet enabled for `rbooks.tradelink247.com`; it is local-only for now.
+
+The media volume (product photographs) is not covered by the dump - see
+"Backing up and restoring" above for capturing it separately, and adjust the
+volume name for whichever project is actually running (Compose prefixes it
+with the project name, e.g. `rbooks_media_data` here rather than
+`karvya_media_data`).
 
 ### What this deployment does not do
 

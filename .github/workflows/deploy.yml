@@ -80,8 +80,8 @@ jobs:
               docker-compose.yml docker-compose.prod.yml docker-compose.shared.yml \
               "$SSH_USER@$SSH_HOST:$APP_DIR/"
           rsync -az -e "ssh $SSH_OPTS" \
-              scripts/deploy.sh \
-              "$SSH_USER@$SSH_HOST:$APP_DIR/scripts/deploy.sh"
+              scripts/deploy.sh scripts/backup-db.sh \
+              "$SSH_USER@$SSH_HOST:$APP_DIR/scripts/"
 
       - name: Deploy
         env:
