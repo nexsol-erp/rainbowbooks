@@ -110,14 +110,15 @@ public abstract class AbstractIntegrationTest {
     /**
      * Puts the seeded data back after every test.
      *
-     * <p>Stock and categories both leak between classes otherwise: an order
-     * permanently consumes stock, and a category created by one test changes
-     * the count another asserts on. Restoring centrally removes the coupling
-     * rather than asking every class to remember.
+     * <p>Stock, products and categories all leak between classes otherwise: an
+     * order permanently consumes stock, and a product a test creates (e.g. to
+     * prove a second category of thing can be sold) changes the counts another
+     * class asserts on. Restoring centrally removes the coupling rather than
+     * asking every class to remember.
      *
-     * <p>Only empty, non-seeded categories are removed - a category holding
-     * products is left alone, since deleting it would fail on the foreign key
-     * and hide whatever real problem put products there.
+     * <p>Products are deleted before categories so a category a test created
+     * to hold one is empty by the time the category pass runs, rather than
+     * surviving because something still (transiently) referenced it.
      */
     @AfterEach
     void restoreSeededData() {
@@ -128,6 +129,10 @@ public abstract class AbstractIntegrationTest {
                         product.setStockQuantity(seeded);
                         productRepository.save(product);
                     }));
+
+            productRepository.findAll().stream()
+                    .filter(product -> !SEEDED_STOCK.containsKey(product.getSku()))
+                    .forEach(productRepository::delete);
 
             categoryRepository.findAll().stream()
                     .filter(category -> !SEEDED_CATEGORY_SLUG.equals(category.getSlug()))
