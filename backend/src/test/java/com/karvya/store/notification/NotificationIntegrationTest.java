@@ -32,10 +32,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The scheduled worker is disabled in the test profile, so each pass here is
  * driven explicitly rather than racing a timer.
  */
-@Import(ControllableEmailSender.Config.class)
+@Import({ControllableEmailSender.Config.class, ControllableOrderConfirmationSender.Config.class})
 class NotificationIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private ControllableEmailSender emailSender;
+    @Autowired private ControllableOrderConfirmationSender orderConfirmationSender;
     @Autowired private NotificationDispatcher dispatcher;
     @Autowired private EmailNotificationRepository notifications;
     @Autowired private CustomerOrderRepository orders;
@@ -44,6 +45,7 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
     @BeforeEach
     void resetSender() {
         emailSender.reset();
+        orderConfirmationSender.reset();
 
         // Every drain here claims the whole outbox, so these tests are only
         // meaningful starting from an empty one. Stated as an assertion rather
@@ -196,6 +198,34 @@ class NotificationIntegrationTest extends AbstractIntegrationTest {
         // and a failed notification is not picked up again
         transactionalMakeDue(orderNumber);
         assertThat(drainOutbox()).isZero();
+    }
+
+    // ---- templated sender ---------------------------------------------------
+
+    /**
+     * The point of routing by type rather than always trying the templated
+     * sender first: an unconfigured provider must not silently swallow every
+     * customer confirmation.
+     */
+    @Test
+    @DisplayName("the customer confirmation uses the templated sender once one is configured")
+    void usesTemplatedSenderWhenConfigured() throws Exception {
+        orderConfirmationSender.enable();
+
+        String orderNumber = placeOrder("asha@example.com");
+        drainOutbox();
+
+        EmailNotification customerNotification = notificationsFor(orderNumber).stream()
+                .filter(n -> n.getType().equals(EmailNotification.TYPE_ORDER_CUSTOMER))
+                .findFirst().orElseThrow();
+
+        assertThat(orderConfirmationSender.sentNotificationIds()).contains(customerNotification.getId());
+        assertThat(customerNotification.getStatus()).isEqualTo(NotificationStatus.SENT);
+
+        // the admin alert is a different type, so it is unaffected
+        assertThat(emailSender.sent()).anyMatch(m -> m.subject().contains(orderNumber));
+        // and the templated sender took the customer's copy, not SMTP
+        assertThat(emailSender.sent()).noneMatch(m -> m.to().equals("asha@example.com"));
     }
 
     // ---- claiming ---------------------------------------------------------

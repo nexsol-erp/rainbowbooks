@@ -40,13 +40,16 @@ public class NotificationDispatcher {
     private final EmailSender emailSender;
     private final EmailRenderer renderer;
     private final AppProperties properties;
+    private final TemplatedOrderConfirmationSender orderConfirmationSender;
 
     public NotificationDispatcher(EmailNotificationRepository notifications, EmailSender emailSender,
-                                  EmailRenderer renderer, AppProperties properties) {
+                                  EmailRenderer renderer, AppProperties properties,
+                                  TemplatedOrderConfirmationSender orderConfirmationSender) {
         this.notifications = notifications;
         this.emailSender = emailSender;
         this.renderer = renderer;
         this.properties = properties;
+        this.orderConfirmationSender = orderConfirmationSender;
     }
 
     /**
@@ -80,8 +83,16 @@ public class NotificationDispatcher {
         }
 
         try {
-            String body = renderer.render(notification);
-            emailSender.send(notification.getRecipient(), notification.getSubject(), body);
+            // MSG91's templated API renders the customer confirmation itself,
+            // so nothing is rendered here for that one type - not a general
+            // replacement for SMTP, just this one notification.
+            if (EmailNotification.TYPE_ORDER_CUSTOMER.equals(notification.getType())
+                    && orderConfirmationSender.isConfigured()) {
+                orderConfirmationSender.send(notification);
+            } else {
+                String body = renderer.render(notification);
+                emailSender.send(notification.getRecipient(), notification.getSubject(), body);
+            }
             notification.markSent();
             return true;
 

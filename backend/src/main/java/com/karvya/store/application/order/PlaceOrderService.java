@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Turns a cart into an order. The transactional heart of the application.
@@ -308,6 +309,11 @@ public class PlaceOrderService {
         payload.put("itemCount", order.getItems().stream().mapToInt(OrderItem::getQuantity).sum());
         payload.put("paymentMethod", method.getLabel());
         payload.put("paymentInstructions", method.getInstructions());
+        // Only MSG91's order-confirmation template variables want this; the
+        // Thymeleaf templates list items themselves and ignore it.
+        payload.put("productName", order.getItems().stream()
+                .map(OrderItem::getProductName)
+                .collect(Collectors.joining(", ")));
 
         if (adminEmail != null && !adminEmail.isBlank()) {
             notifications.save(withOrder(EmailNotification.queue(

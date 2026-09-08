@@ -21,7 +21,8 @@ public record AppProperties(
         String whatsAppNumber,
         BootstrapAdmin bootstrapAdmin,
         Security security,
-        Notifications notifications
+        Notifications notifications,
+        Msg91 msg91
 ) {
 
     /**
@@ -63,5 +64,17 @@ public record AppProperties(
             int batchSize,
             Duration pollInterval
     ) {
+    }
+
+    /**
+     * MSG91's templated email API - used only for the order-confirmation
+     * customer email today, not a general SMTP replacement. Absent an auth
+     * key, the order-confirmation email falls back to the regular SMTP path
+     * like everything else.
+     */
+    public record Msg91(String authKey, String fromEmail, String domain, String orderConfirmationTemplateId) {
+        public boolean isConfigured() {
+            return authKey != null && !authKey.isBlank();
+        }
     }
 }

@@ -114,6 +114,11 @@ app:
     max-attempts: 6
     batch-size: 25
     poll-interval: PT1M
+  msg91:
+    auth-key: ${MSG91_AUTH_KEY:}
+    from-email: ${MSG91_FROM_EMAIL:no-reply@g05mmy.mailer91.com}
+    domain: ${MSG91_DOMAIN:g05mmy.mailer91.com}
+    order-confirmation-template-id: ${MSG91_ORDER_TEMPLATE_ID:}
 
 logging:
   level:
