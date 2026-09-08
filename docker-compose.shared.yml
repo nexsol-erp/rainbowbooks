@@ -1,0 +1,27 @@
+# Overlay for a host where another app's Caddy already owns ports 80 and 443
+# and routes to sibling apps by container name over a shared external Docker
+# network (see /opt/apps/hospital-ai-workspace/Caddyfile on the rbooks host).
+#
+# This app joins that network instead of publishing its own port, so it
+# cannot collide with whatever else is already bound to 80/443 - and it does
+# not run its own Caddy, because the shared one is what terminates TLS.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.shared.yml up -d
+#
+# Requires the `edge` network to already exist on the host, and the shared
+# Caddy's Caddyfile to have a block routing the subdomain to rbooks-web:80.
+
+services:
+  web:
+    # Fixed name rather than the default <project>-web-1: this is what the
+    # shared Caddyfile's reverse_proxy target names, and it has to be unique
+    # across every other project sharing the `edge` network.
+    container_name: rbooks-web
+    ports: !override []
+    networks:
+      - default
+      - edge
+
+networks:
+  edge:
+    external: true

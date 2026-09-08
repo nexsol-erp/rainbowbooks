@@ -16,6 +16,10 @@ services:
       start_period: 20s
 
   backend:
+    # In production this is pulled from the registry (deploy.sh exports
+    # BACKEND_IMAGE); build: is only exercised locally and in CI, where the
+    # var is unset and this default local tag is what gets built and run.
+    image: ${BACKEND_IMAGE:-rainbowbooks-backend:local}
     build: ./backend
     restart: unless-stopped
     depends_on:
@@ -50,6 +54,9 @@ services:
       start_period: 60s
 
   web:
+    # See backend's image: comment - same registry-in-production, build-
+    # locally pattern.
+    image: ${WEB_IMAGE:-rainbowbooks-web:local}
     # built from the repository root so the image can include nginx/default.conf
     build:
       context: .

@@ -1,9 +1,10 @@
 # Deploys to EC2 after CI passes on main.
 #
 # Triggered by CI completing rather than by the push itself, so a commit that
-# fails its tests never reaches the server. The manual trigger is there for
-# redeploying the current main without pushing anything - after an .env change,
-# for instance.
+# fails its tests never reaches the server - and so the images CI's publish
+# job pushed to GHCR are actually there by the time this pulls them. The
+# manual trigger is there for redeploying the current main without pushing
+# anything - after an .env change, for instance.
 name: Deploy
 
 on:
@@ -30,8 +31,20 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     environment: production
+    permissions:
+      # Read-only, and only used to hand deploy.sh a short-lived token that
+      # can pull this run's images from GHCR - nothing here writes anything.
+      contents: read
+      packages: read
 
     steps:
+      # The commit CI actually validated, not whatever main has moved to since
+      # - workflow_run carries it explicitly; workflow_dispatch has no run to
+      # inherit one from, so it falls back to the ref that was dispatched.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
       - name: Open an SSH session
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -46,36 +59,58 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Deploy
+      - name: Sync compose files
         env:
           SSH_HOST: ${{ vars.DEPLOY_HOST }}
-          SSH_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+          SSH_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+          APP_DIR: ${{ vars.DEPLOY_APP_DIR || '/opt/apps/rbooks' }}
         run: |
           if [ -z "$SSH_HOST" ]; then
             echo "DEPLOY_HOST is not set. Add it under Settings -> Secrets and variables -> Actions -> Variables." >&2
             exit 1
           fi
-          # Invoked through bash rather than executed. The checkout on the
-          # server can predate the commit that marked the script executable,
-          # and it fails before it can fetch the fix - so the deploy that would
-          # repair the exec bit is the one that cannot run. Naming the
-          # interpreter removes the dependency on the mode entirely.
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
+          SSH_OPTS="-i $HOME/.ssh/id_ed25519 -o BatchMode=yes"
+          # Only the compose files and the deploy script - not the source tree.
+          # This box runs published images; it has no reason to hold a copy of
+          # the code that built them, and .env (deliberately not synced - it
+          # lives here permanently, hand-edited) would need a real .gitignore
+          # discipline check every time otherwise.
+          ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "mkdir -p $APP_DIR/scripts"
+          rsync -az -e "ssh $SSH_OPTS" \
+              docker-compose.yml docker-compose.prod.yml docker-compose.shared.yml \
+              "$SSH_USER@$SSH_HOST:$APP_DIR/"
+          rsync -az -e "ssh $SSH_OPTS" \
+              scripts/deploy.sh \
+              "$SSH_USER@$SSH_HOST:$APP_DIR/scripts/deploy.sh"
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ vars.DEPLOY_HOST }}
+          SSH_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+          APP_DIR: ${{ vars.DEPLOY_APP_DIR || '/opt/apps/rbooks' }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GHCR_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The token travels over stdin, not as an argument or env var in the
+          # remote command line - other accounts share this host, and either of
+          # those would sit in `ps` output for the (short) run of this command.
+          echo "$GHCR_TOKEN" | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes \
               "$SSH_USER@$SSH_HOST" \
-              'APP_DIR=/opt/karvya bash /opt/karvya/scripts/deploy.sh'
+              "APP_DIR=$APP_DIR IMAGE_TAG=$IMAGE_TAG GHCR_ACTOR=$GHCR_ACTOR bash $APP_DIR/scripts/deploy.sh"
 
       - name: Report
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "Deployed ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "Deployed ${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           else
             {
               echo "**Deploy failed, and the site may be down.**"
               echo
               echo "Containers are replaced before the health check runs, so a"
               echo "failure leaves the new revision running rather than rolling"
-              echo "back on its own. The deploy log prints the previous commit"
-              echo "and the command to return to it."
+              echo "back on its own. To roll back, re-run this workflow"
+              echo "(workflow_dispatch) against the previous good commit."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
